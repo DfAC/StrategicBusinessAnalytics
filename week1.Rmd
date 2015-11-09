@@ -1,0 +1,302 @@
+---
+title: "Foundations of strategic business analytics Week 1"
+author: "LKB"
+output: html_document
+---
+
+#Strategic Business Analysis week 01
+
+Data is a mean to provide a business solution. Business issues that can be solved by leveraging the data. We want to use the data to make actionable recommendations for the business.
+Consulting skills needed:
+
+* alytics
+* R
+* Business
+* Communication
+
+It is important to:
+
+* Focus on good quality visuals and its presentation - audience will take it as proxy for professionalism.
+* Describe data in more meaningful way, name outputs, making it easy to visualise (see example below)
+
+##Identify groups
+
+Find elements that are similar. Approach suggested is hierarchical clustering. How to define no of clusters:
+
+* use common sense
+* use business understanding
+
+We are making decisions business efficient by balancing cost and efficiency of the actions - on this occasion it means aggregating groups that are similar from business perspective, this way we reduce (optimalise) number of segments.
+
+###Naming example
+
+We divide SKU into three groups:
+* horses - reliable stock (high sales, low variability)
+	* we make them to stock, low risk of not selling
+* bulls - difficult to control (med to high sales, varied variability)
+	* dealing with on case to case basis
+* crickets - small but can jump (small sales, varied variability)
+	* made to order
+
+##output
+
+In business analysis output will be simplified, using basic analysis. Most of the time it will be:
+
+* output in the 2x2 matrix
+* name outputs in meaningful way, making it visual representation
+
+
+```{r, echo=FALSE}
+setwd("d:/tmp/Dropbox/Edu/Coursea/StrategicBusinessAnalytics/")
+
+require(knitr)
+opts_chunk$set(echo = TRUE, cache = FALSE, cache.path = "cache/", fig.path = "figure/", warning = FALSE)
+#http://yihui.name/knitr/options/
+```
+
+This is based on the code written by Nicolas Glady & Pauline Glikman, ESSEC BS.
+
+
+#Example 1 - Stock Keeping Units
+
+```{r}
+
+rm(list=ls(all=TRUE))
+
+# Let's load our dataset
+data=read.table('DATA_2.01_SKU.csv', header = T,sep=',') 
+str(data) 
+summary(data) 
+```
+
+
+Let's plot our data to see if we can identify groups visually 
+
+```{r}
+
+
+plot(data$CV, data$ADS, main = "SKU Example", ylab="Average Daily Sales", xlab= "Coefficient of Variation")
+
+abline(v=0.2, col = "red") 
+abline(h=4, col="red") 
+text(0.15,9.7, "Horses", col = "red") 
+text(0.65,9, "Wild Bulls", col = "red") 
+text(0.8,2, "Crickets", col = "red") 
+```
+
+
+Let's find groups using hierarchical clustering and check if we obtain similar results
+
+
+```{r}
+
+testdata=data  # To keep our dataset safe, let's create a copy of it called "testdata"
+
+testdata = scale(testdata) 
+d = dist(testdata, method = "euclidean") # the dist() function computes the distances of all the observations in our dataset
+hcward = hclust(d, method="ward.D") # hclust() function performs hiearchical clustering, we pass it the distances, and we set the method argument to "ward.D"
+
+data$groups<-cutree(hcward,k=3) # assign our points to our k=3 clusters 
+
+
+#install.packages("lattice") 
+library(lattice)
+
+#plot
+xyplot(ADS~ CV,main = "After Clustering", type="p",group=groups,data=data, # define the groups to be differentiated 
+       auto.key=list(title="Group", space = "left", cex=1.0, just = 0.95), # to produce the legend we use the auto.key= list() 
+       par.settings = list(superpose.line=list(pch = 0:18, cex=1)), # the par.settings argument allows us to pass a list of display settings
+       col=c('blue','green','red')) # finally we choose the colour of our plotted points per group
+
+```
+
+##Answering questions
+
+###Q1
+
+What is the correct mean and median of the coefficient of variations of the sales in the SKU dataset?
+
+```{r}
+summary(data$CV)
+```
+
+
+###Q2
+What are the resulting segments compared to what is shown in class if you decide to take only 2 clusters?
+
+```{r}
+library(lattice)
+
+d = dist(testdata, method = "euclidean") 
+hcward = hclust(d, method="ward.D") 
+data$groups<-cutree(hcward,k=2) 
+
+#plot
+xyplot(ADS~ CV,main = "After Clustering", type="p",group=groups,data=data, # define the groups to be differentiated 
+       auto.key=list(title="Group", space = "left", cex=1.0, just = 0.95), # to produce the legend we use the auto.key= list() 
+       par.settings = list(superpose.line=list(pch = 0:18, cex=1)), # the par.settings argument allows us to pass a list of display settings
+       col=c('blue','green','red')) # finally we choose the colour of our plotted points per group
+
+```
+The segments "Crickets" and "Wild Bulls" are merged
+
+
+
+#Example 2, HR analytics
+
+```{r}
+rm(list=ls(all=TRUE))
+data=read.table('DATA_2.02_HR.csv',header = T,sep=',') 
+str(data)
+summary(data)
+```
+
+Lets cluster it
+
+```{r}
+testdata = data
+testdata = scale(testdata) # the scale function automatically performs data normalization on all your variables
+
+d = dist(testdata, method = "euclidean") 
+hcward = hclust(d, method="ward.D") 
+data$groups = cutree(hcward,k=4) # assign our points to our k=4 clusters 
+```
+
+
+
+```{r}
+
+aggdata = aggregate(.~ groups, data=data, FUN=mean) # The aggregate() function presents a summary of a statistic, broken down by one or more groups. Here we compute the mean of each variable for each group. 
+
+# One thing we would like to have is the proportion of our data that is in each cluster
+proptemp=aggregate(S~ groups, data=data, FUN=length) # we create a variable called proptemp which computes the number of observations in each group (using the S variable, but you can take any.)
+aggdata$proportion=(proptemp$S)/sum(proptemp$S) # proportion of observations in each group we compute the ratio between proptemp and the total number of observations
+aggdata=aggdata[order(aggdata$proportion,decreasing=T),] # Let's order the groups from the larger to the smaller
+
+# Let's see the output by calling our aggdata variable
+aggdata
+```
+
+As discussed in the videos, let's remove the Newborn variable, which is not really relevant and by being a dummy drives the clustering too much...
+
+```{r}
+testdata=data[,1:5] # we create a new dataset, called "testdata" includes all the rows and the 5 first columns of our original dataset 
+
+testdata = scale(testdata) # We normalize again our original variables
+d = dist(testdata, method = "euclidean") # We compute the distances between observations
+hcward = hclust(d, method="ward.D") # Hiearchical Clustering using Ward criterion
+
+data$groups = cutree(hcward,k=4) # Create segments for k=4
+# Note that we re-use the original dataset "data" (where the variable Newborn is still present) and not "testdata" (where the variable Newborn has been removed)
+# Hence we'll be able to produce summary statistics also for the Newborn variable regardless it wasn't included when doing the second version of the clustering
+
+aggdata = aggregate(.~ groups, data=data, FUN=mean) # Aggregate the values again
+
+proptemp=aggregate(S~ groups, data=data, FUN=length)  # Compute the number of observations per group
+aggdata$proportion=(proptemp$S)/sum(proptemp$S) # Compute the proportion
+aggdata=aggdata[order(aggdata$proportion,decreasing=T),] # Let's order the groups from the larger to the smaller
+
+# Let's see the output by calling our aggdata variable
+aggdata 
+
+#Export the output 
+#write.csv(aggdata, "HR_example_Numerical_Output.csv", row.names=FALSE)
+
+
+```
+
+
+Instead of write.csv, you can also use write.csv2() if you encounter an error due to regional settings for separators
+
+
+##Answering questions
+
+###Q3
+Which of the following graphs reports the correct plot of the last project evaluation as a function of the number of projects done for the HR dataset?
+
+```{r}
+plot(data$LPE,data$NP)
+```
+
+###Q4
+If you cluster the HR dataset on Satisfaction, Project Evaluation and Number of Projects Done and that you keep 2 segments using the same values for the other specifications (scaling, distance type and clustering algorithm), what's the resulting median Satisfaction per segment?
+
+```{r}
+
+testdata = data[1:3] # Satisfaction, Project Evaluation and Number of Projects Done
+
+testdata = scale(testdata)
+d = dist(testdata, method = "euclidean") 
+hcward = hclust(d, method="ward.D") 
+data$groups = cutree(hcward,k=2) # assign our points to our k=4 clusters 
+
+```
+
+Now we aggregate by group and median
+
+```{r}
+aggdata = aggregate(.~ groups, data=data, FUN=median)
+aggdata$S
+```
+
+
+#Example 3 - Telecomunications
+
+```{r}
+rm(list=ls(all=TRUE))
+
+# Let's load the data
+data=read.table('DATA_2.03_Telco.csv', header = T,sep=',')
+str(data) 
+summary(data) 
+```
+
+Lets first divide into 8 segments, and see how they differ.
+
+```{r}
+testdata=data # To keep our dataset safe, let's create a copy of it called "testdata"
+testdata = scale(testdata) # the scale function automatically performs data normalization on all your variables
+
+d = dist(testdata, method = "euclidean") # the dist() function computes the distances of all the observations in our dataset
+hcward = hclust(d, method="ward.D") # hclust() function performs hiearchical clustering, we pass it the distances, and we set the method argument to "ward.D"
+
+data$groups=cutree(hcward,k=8) # assign our points to our k=8 clusters 
+aggdata= aggregate(.~ groups, data=data, FUN=mean) # Aggregation by group and computation of the mean values
+proptemp=aggregate(Calls~ groups, data=data, FUN=length) # Computation of the number of observations by group
+aggdata$proportion=(proptemp$Calls)/sum(proptemp$Calls) # Computation of the proportion by group
+aggdata=aggdata[order(aggdata$proportion,decreasing=T),] # Ordering from the largest group to the smallest
+
+aggdata
+```
+
+From what we can see, some segments for ex Young Adults and Teens, 40stg and 50stg behave the same. We can consider reducing no of segments, as their advertising will be very similiar. Let's try again with 5 segments
+
+```{r}
+data$groups= cutree(hcward,k=5) #Create segments for k=5
+aggdata= aggregate(.~ groups, data=data, FUN=mean) 
+proptemp=aggregate(Calls~ groups, data=data, FUN=length) 
+aggdata$proportion=(proptemp$Calls)/sum(proptemp$Calls) 
+aggdata=aggdata[order(aggdata$proportion,decreasing=T),] 
+
+aggdata
+#write.csv(aggdata, file = "aggdataTelco5seg.csv", row.names=FALSE) # Let's save the output in a csv to work on it in Excel later
+```
+
+We can again recognise distinctive patern emerging. Let's draw the radar chart of those.
+
+```{r}
+palette(rainbow(12, s = 0.6, v = 0.75)) # Select the colors to use
+stars(aggdata[,2:(ncol(data))], len = 0.6, key.loc = c(11, 6),xlim=c(2,12),main = "Segments", draw.segments = TRUE,nrow = 2, cex = .75,labels=aggdata$groups)
+
+```
+
+##Answering questions
+
+For the Telecom dataset, using the specifications of the example presented in the videos, which of the following claim is correct?
+
+* All the customers in the sample made at least one international call
+```{r}
+length(data$Intern) - sum(data$Intern>0)
+```
+* The Young Adult (YA) segment uses more data and text than any other segment
+

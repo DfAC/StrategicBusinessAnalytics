@@ -1,0 +1,166 @@
+---
+title: "Strategic Business Analytics, Project preparation"
+author: "LKB"
+output: 
+  html_document: 
+    highlight: zenburn
+    theme: readable
+---
+
+
+```{r, echo=FALSE}
+setwd("d:/tmp/Dropbox/Edu/Coursea/StrategicBusinessAnalytics/")
+require(knitr)
+opts_chunk$set(echo = TRUE, cache = FALSE, cache.path = "cache/", fig.path = "figure/", warning = FALSE)
+#http://yihui.name/knitr/options/
+```
+
+##Load data
+
+I plan on working on [Bike Sharing dataset](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset).
+
+* instant: record index
+* dteday : date
+* season : season (1:spring, 2:summer, 3:fall, 4:winter)
+* yr : year (0: 2011, 1:2012)
+* mnth : month ( 1 to 12)
+* hr : hour (0 to 23)
+* holiday : weather day is holiday or not (extracted from [Web Link])
+* weekday : day of the week
+* workingday : if day is neither weekend nor holiday is 1, otherwise is 0.
+* weathersit : 
+	* 1: Clear, Few clouds, Partly cloudy, Partly cloudy
+	* 2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist
+	* 3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
+	* 4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog
+* temp : Normalized temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-8, t_max=+39 (only in hourly scale)
+* atemp: Normalized feeling temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-16, t_max=+50 (only in hourly scale)
+* hum: Normalized humidity. The values are divided to 100 (max)
+* windspeed: Normalized wind speed. The values are divided to 67 (max)
+* casual: count of casual users
+* registered: count of registered users
+* cnt: count of total rental bikes including both casual and registered
+
+```{r, echo=FALSE}
+rm(list=ls(all=TRUE))
+data=read.table('day.csv',sep=',',header=TRUE)
+
+data$dteday<-as.Date(data$dteday) #set date correct
+data$instant<-NULL
+data$yr<-data$yr + 2011
+
+str(data)
+summary(data)
+```
+
+##Exploring data
+
+A quick analysis of everything
+
+```{r}
+plot(data$dteday,data$cnt,col='red', main = "Bike users (reg in blue)")
+points(data$dteday,data$registered,col='blue')
+```
+It seems that number of casual users increase only in specific periods of the year.
+
+```{r}
+boxplot(cnt ~ season,data = data) #least in spring, most in summer and fall
+boxplot(registered ~ season,data = data)
+boxplot(casual ~ season,data = data) #least in spring, most in summer and fall
+```
+
+And only in specific days.
+```{r}
+plot(data$dteday,data$registered-data$casual,col='red', main = "Bike users (reg in blue)")
+```
+While overall number does not change there is a big difference in behaviour of 
+
+
+
+```{r}
+#much more casual during holidays
+boxplot(cnt ~ workingday,data = data) #almost no diff in no, slightly less on working day
+boxplot(cnt ~ holiday,data = data) #less users on holidays
+
+
+boxplot(casual~ weekday,data = data) #casuals prefer holidays
+boxplot(registered~ weekday,data = data) #registerd prefer working days
+
+plot(registered~ weathersit,data = data)
+windspeed
+
+```
+
+
+##Lets do some clustering (unsupervised learning)
+
+
+```{r}
+#library(GGally)
+
+plot(atemp ~ temp,data = data) #almost linear correlation use only one
+
+testData<-data
+testData <- subset(testData, select = - c(dteday,yr,atemp,mnth,hum,holiday)) #remove columns
+#,windspeed,hum))
+cor(testData)
+#pairs(testData)
+#ggpairs(testData,alpha = 0.4 )
+
+
+testData = scale(testData) 
+d = dist(testData, method = "euclidean") # the dist() function computes the distances of all the observations in our dataset
+hcward = hclust(d, method="ward.D") # hclust() function performs hiearchical clustering, we pass it the distances, and we set the method argument to "ward.D"
+data$groups<-cutree(hcward,k=4) # assign our points to clusters 
+```
+
+```{r}
+plot(groups ~ hum,data = data) #almost linear correlation use only one
+```
+
+
+
+```{r}
+
+testdata=data  # To keep our dataset safe, let's create a copy of it called "testdata"
+
+testdata = scale(testdata) 
+d = dist(testdata, method = "euclidean") # the dist() function computes the distances of all the observations in our dataset
+hcward = hclust(d, method="ward.D") # hclust() function performs hiearchical clustering, we pass it the distances, and we set the method argument to "ward.D"
+
+data$groups<-cutree(hcward,k=3) # assign our points to our k=3 clusters 
+
+
+```
+
+
+```{r}
+
+
+plot(hum ~ cnt,data = data) #almost linear correlation use only one
+
+
+boxplot(registered ~ season,data = data)
+boxplot(casual ~ season,data = data)
+
+
+
+
+
+boxplot(cnt ~ weathersit,data = data) #most on nice day, almost none on 4+
+
+plot(cnt ~ temp,data = data)
+
+```
+
+* weathersit : 
+	* 1: Clear, Few clouds, Partly cloudy, Partly cloudy
+	* 2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist
+	* 3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
+	* 4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog
+	* temp : Normalized temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-8, t_max=+39 (only in hourly scale)
+* atemp: Normalized feeling temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-16, t_max=+50 (only in hourly scale)
+* hum: Normalized humidity. The values are divided to 100 (max)
+* windspeed: Normalized wind speed. The values are divided to 67 (max)
+* casual: count of casual users
+

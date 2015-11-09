@@ -1,0 +1,266 @@
+---
+title: "Strategic Business Analytics Week 3"
+author: "LKB"
+output: 
+  html_document: 
+    highlight: zenburn
+    theme: readable
+---
+
+#Lectures
+
+Being able to anticipate the results of the actions allows us to choose the efficient strategy to adopt\ and make operations more efficient. 
+
+We want to use this to allow us to act quickly on most pressing matters.
+
+* using classifications to predict events
+	* by identifying cluster we can identify people to leave
+* survival analysis
+	* we can use this life science approach to predict the time lead before events happens
+	* how long it will take to break down
+	* this is right-censored problem
+* how to model seasonal effects
+
+Causality between a cause and a consequence, could be tested by the ability of the potential cause to predict the consequence.
+
+#Examples
+
+```{r, echo=FALSE}
+setwd("d:/tmp/Dropbox/Edu/Coursea/StrategicBusinessAnalytics/")
+require(knitr)
+opts_chunk$set(echo = TRUE, cache = FALSE, cache.path = "cache/", fig.path = "figure/", warning = FALSE)
+#http://yihui.name/knitr/options/
+```
+
+##Example 1 -  Credit Scoring
+
+```{r}
+rm(list=ls(all=TRUE))
+dataold=read.table('DATA_3.01_CREDIT.csv',sep=',',header=TRUE)
+datanew=read.table('DATA_4.01_CREDIT2.csv',sep=',',header=TRUE) 
+
+str(datanew)
+summary(datanew)
+
+```
+
+Lets build model on old data and test how is it going to predict our new dataset.
+
+```{r}
+linreg=lm(Rating~.,data=dataold)
+
+#old data (internal check)
+cor(linreg$fitted.values,dataold$Rating)
+plot(dataold$Rating,linreg$fitted.values)
+
+#new data (external check)
+predcreditscore = predict(linreg,newdata=datanew,type="response") 
+
+cor(predcreditscore,datanew$Rating) 
+plot(datanew$Rating,predcreditscore) # Plot the fitted values vs. the actual ones
+```
+
+##Example 2 - HR Analytics
+
+```{r}
+rm(list=ls(all=TRUE))
+dataold=read.table('DATA_3.02_HR2.csv', header = T,sep=',') 
+datanew=read.table('DATA_4.02_HR3.csv', header = T,sep=',')
+
+str(datanew)
+summary(datanew)
+```
+
+We can create a log model of employes that left (dataold), which we can then model to estimate probabilty of current employee leaving (datanew).
+
+```{r}
+logreg = glm(left ~ ., family=binomial(logit), data=dataold) # Estimate the drivers of attrition
+probaToLeave <- predict(logreg,newdata=datanew,type="response") 
+predattrition = data.frame(probaToLeave) # Structure the prediction output in a table
+```
+
+We can consider now much we want to keep employee by comparing it with his/her performance.
+
+```{r}
+predattrition$performance=datanew$LPE
+str(predattrition)
+
+plot(predattrition$probaToLeave,predattrition$performance)
+#put text on top
+abline(v=0.4, col = "red") 
+abline(h=0.55, col="red") 
+text(0.15,.8, "Manage them as usual", col = "blue", font = 4) 
+text(0.6,.45, "Let them improve or let them leave", col = "green", font = 2) 
+text(0.7,.8, "KEEP THEM", col = "red", font = 2)  
+
+```
+
+Based on this split lets then focus on most important employees first
+
+```{r}
+predattrition$priority=predattrition$performance*predattrition$probaToLeave
+orderpredattrition=predattrition[order(predattrition$priority,decreasing = TRUE),]
+
+summary(orderpredattrition)
+head(orderpredattrition)
+```
+
+###Quiz
+
+And to answer the quiz questions:
+
+What is the ID of the employee that is the less likely to leave according to the estimated model?
+
+```{r}
+orderpredattrition=predattrition[order(predattrition$probaToLeave,decreasing = F),]
+head(orderpredattrition)
+```
+
+What is the ID of the employee that is the less likely to leave according to the estimated model and who has a performance larger than 0.90?
+```{r}
+
+head(orderpredattrition[orderpredattrition$performance>0.9,])
+
+```
+
+
+##Example 3 - Predictive maitenance
+
+
+```{r}
+rm(list=ls(all=TRUE))
+data=read.table('DATA_4.03_MNT.csv',sep=',',header=TRUE)
+
+str(data)
+summary(data)
+```
+
+We can use survival analysis, known from life sciences, to estimate probability of equipment failure (broken = 1). Lets first create a regresion model based on existing data
+
+```{r}
+#install.packages("survival") # Install the survival package to your computer
+library(survival) # Load the survival package
+
+linregmodel = lm(lifetime~.-broken,data=data)  # Build a linear regression model
+summary(linregmodel) 
+
+#Lets create survival model
+dependantvars = Surv(data$lifetime, data$broken) # choose the dependant (response) variables for the survival regression model
+survreg = survreg(dependantvars~pressureInd+moistureInd+temperatureInd+team+provider, dist="gaussian",data=data) # Create your survival regression model
+summary(survreg)  # The summary() function shows the output of your model
+```
+
+Summary shows us the most important parameters for model (p < 0.05). Interestingly Team C and Provide 3 seems to be detrimental. Its worth investigating why is it so. Is it to do with specific working conditions? Price? If there is no sadisfyinf explanation, we should act upon it.
+
+We should first estimate the accuracy of the model. On this occasion we are predicting future so we need to:  
+* use another dataset (random train/test split)
+* split data in time, and test model on train set and prediction on test set
+
+###Making predictions
+
+Lets now run our model and predict expected "remaining lifetime" as a different of predictied lifetime and age of the component.
+
+```{r}
+
+Ebreak=predict(survreg, newdata=data, type="quantile", p=.5) # Make predictions based on the model. Here we estimate the median lifetime as the expected moment of "death"
+
+Forecast=data.frame(Ebreak) 
+Forecast$lifetime=data$lifetime  
+Forecast$broken=data$broken 
+Forecast$RemainingLT=Forecast$Ebreak-data$lifetime # Computed Expected Remaining Lifetime
+
+```
+
+
+We can now proritise our actions by 
+
+```{r}
+summary(Forecast) # View the complete Forecast dataframe
+
+Forecast=Forecast[order(Forecast$RemainingLT),] # Order the elements by Expected Remaining Lifetime
+ActionsPriority=Forecast[Forecast$broken==0,] # And keep only those who are not broken yet
+#View(ActionsPriority) # View the output and take actions!
+
+boxplot(Forecast)
+```
+
+###Quiz
+
+For the Predictive Maintenance dataset (DATA_4.03_MNT.csv), using the same specifications as seen during the videos, what is the ID of the element that has the largest expected remaining lifetime?
+
+```{r}
+
+head(ActionsPriority[order(ActionsPriority$RemainingLT,decreasing = T),])
+
+```
+
+
+
+
+If you use as explanatory variables only the Pressure, Moisture and Temperature indices (hence removing the teams and providers information), which one of the following is correct?
+
+```{r}
+library(survival) # Load the survival package
+
+#linregmodel = lm(lifetime~.-broken-team-provider,data=data)  # Build a linear regression model
+linregmodel = lm(lifetime~.-broken,data=data) 
+summary(linregmodel) 
+
+#Lets create survival model
+dependantvars = Surv(data$lifetime, data$broken) # choose the dependant (response) variables for the survival regression model
+survreg = survreg(dependantvars~pressureInd+moistureInd+temperatureInd, dist="gaussian",data=data) # Create your survival regression model
+summary(survreg)  # The summary() function shows the output of your model
+```
+
+
+
+
+##Example 4 - Seasional sale of chocolates
+
+
+```{r}
+rm(list=ls(all=TRUE))
+data=read.table('DATA_4.04_CHOC.csv',sep=',',header=TRUE)
+
+str(data)
+summary(data$sales)
+```
+
+Sometimes we want to anticipate a whole series of the events. Lets consider sales of the chocolate bars - we need to make sure we have enough product in the stores - too much and they will go to waste, too little and it will be wasting sales.
+Lets firs analise the problem we facing.
+
+
+```{r}
+plot(data$time,data$sales,main="Chocolate sales over time",xlab="Time (in month)",ylab="Monthly sales",ylim=c(0,max(data$sales*1.2)),type='l')
+
+regres=lm(sales~month,data=data) # Build a linear regression model 
+summary(regres)
+
+# Boxplots:
+plot(data$month,data$sales,main="Chocolate sales by month",xlab="Month",ylab="Monthly sales",ylim=c(0,max(data$sales*1.2)))
+```
+Notice that our prediction model use whole dataset. I will do it properly by splitting dataset into training and testing (60:40 split).
+
+
+```{r}
+trainData = data[0:70,]
+
+regres2=lm(sales~month,data=trainData) # Build a linear regression model 
+summary(regres2)
+str(regres2$fitted.values)
+predictionForFutureSales = predict(regres2, newdata=data)
+```
+
+
+
+```{r}
+plot(data$time,data$sales,main="Chocolate sales over time",xlab="Time (in month)",ylab="Monthly sales",ylim=c(0,max(data$sales)*1.2),type='l')
+
+lines(data$time,regres$fitted.values,type='l',col='blue',lty=2)
+lines(data$time,predictionForFutureSales,type='l',col='red',lty=7)
+
+legend("topleft",c("Actual sales","Sales by the whole model","Sales by the 60:40 model"),lty=c(1,2,7),col=c('black','blue','red'))
+```
+
+
+

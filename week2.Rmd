@@ -1,0 +1,255 @@
+---
+title: "Strategic Business Analytics Week 2"
+author: "LKB"
+output: 
+  html_document: 
+    highlight: zenburn
+    theme: readable
+---
+
+#Lecture for week 2
+
+We want to understand relationship between causes and consequences. We focus on:
+
+* anticipate, in the quantified way, the consequences of your actions
+* how to report our findings
+
+What do we look for in the data:
+
+* explain situation with the model.
+	* We need to assess if model is correct.
+	* If model fit situation well we can move on.
+* identifying main driving factors
+* what is the sign of this effect?
+
+Remember the more complex model the more difficult it is to interprete.
+
+```{r, echo=FALSE}
+setwd("d:/tmp/Dropbox/Edu/Coursea/StrategicBusinessAnalytics/")
+
+require(knitr)
+opts_chunk$set(echo = TRUE, cache = FALSE, cache.path = "cache/", fig.path = "figure/", warning = FALSE)
+#http://yihui.name/knitr/options/
+```
+
+This is based on the code written by Nicolas Glady & Pauline Glikman, ESSEC BS.
+
+# Example 01 Credit scoring
+
+
+Read data and then print some summary statistics.
+
+```{r}
+
+data=read.table('DATA_3.01_CREDIT.csv',sep=',',header=TRUE) 
+
+str(data)
+summary(data)
+
+# Produce a histogram of the credit scores
+hist(data$Rating) 
+
+cor(data[,c(1:5,10)]) # Compute the correlation between all the numerical variables of the sample
+```
+
+### making and understanding model
+
+Lets create a linear model to fit our data and assess its accuracy. Note how binary data is being delt with by making new variables.
+
+```{r}
+linreg=lm(Rating~.,data=data) # Estimate a linear regression model of Rating as a function of everything else.
+
+cor(linreg$fitted.values,data$Rating) # Computes the correlation between the fitted values and the actual ones
+plot(data$Rating,linreg$fitted.values) # Plot the fitted values vs. the actual ones
+
+summary(linreg, digits = 4) # Reports the results of the regression
+```
+
+
+Model accuracy is 97.27% and the most important variables are:
+
+* Income
+* Student status
+* Balance
+
+We can identify significance of the driver by sorting t-value column (bigger is better).
+
+To finish off lets visualise a relation between independent variable (Rating) and balance/income.
+
+
+```{r}
+plot(data$Balance,data$Rating) # Allows to visualize the relationship between Balance and Rating
+plot(data$Income,data$Rating) # Allows to visualize the relationship between Income and Rating
+
+```
+
+
+#Example 2 HR
+
+Last week we analysed HR data and identified two most important factors as:
+
+* satisfaction
+* duration of stay at the company
+
+Lets now use model free approach to understand the data.
+
+
+```{r}
+rm(list=ls(all=TRUE))
+datatot=read.table('DATA_3.02_HR2.csv', header = T,sep=',')
+
+str(datatot)
+summary(datatot)
+
+table(datatot$left)/nrow(datatot) # How many ppl have left
+plot(datatot$left) 
+cor(datatot) 
+
+```
+When we look at left relationship with other variables we can see strongest corr with:
+
+* satisfaction
+* TIC
+* Newborn
+
+
+##model
+
+Lets try to fit model to our data using logarythmic regression
+
+```{r}
+
+logreg = glm(left ~ ., family=binomial(logit), data=datatot) # Estimate the drivers of attrition
+
+cor(logreg$fitted.values,datatot$left) # Assess the correlation between estimated attrition and actual
+
+hist(logreg$fitted.values) # See the proportion of employee attrition according to the model
+
+```
+
+Correlation is low as we compare continous variable <0:1> with (0,1). Lets create factorial value by defining cutoff.
+
+```{r}
+cutoff=.3 # Cutoff to determine when P[leaving] should be considered as a leaver or not. Note you can play with it...
+table(logreg$fitted.values<=cutoff,datatot$left)
+
+
+sum((logreg$fitted.values<=cutoff)&(datatot$left==0))/sum(datatot$left==0) # Compute the percentage of correctly classified employees who stayed
+sum((logreg$fitted.values>cutoff)&(datatot$left==1))/sum(datatot$left==1) # Compute the percentage of correctly classified employees who left
+mean((logreg$fitted.values>cutoff)==(datatot$left==1)) # Compute the overall percentage of correctly classified employees
+
+summary(logreg) # Report the results of the logistic regression
+```
+
+Let's use a more visual way to see the effect of one of the most important driver: Time in the Company. By attrition we define a possibility of a reduction in workforce
+
+```{r}
+tempdata=datatot
+aggbTimeRank=aggregate(left~ TIC, data=tempdata, FUN=mean) # We compute the average attrition rate for each value of TIC
+
+cntbTimeRank=aggregate(left~ TIC, data=tempdata, FUN=length) # We compute the number of employees for each value of TIC
+symbols(aggbTimeRank$TIC,aggbTimeRank$left,circles=cntbTimeRank$left, inches=.75, fg="white", bg="red",main= "Time and Employee Attrition", ylab="Average Attrition Rate", xlab= "Time spent") # we 
+
+```
+
+Let's use a more visual way to see the effect of the second most important driver: Satisfaction. We will create sadisfaction rank with 0 being best and 20 being worst.
+
+```{r}
+
+tempdata=datatot
+tempdata$rankSatis = round(rank(-tempdata$S)/600) # mployee satisfaction ranking
+aggbSatisRank = aggregate(left~ rankSatis, data=tempdata, FUN=mean) #  average attrition rate for each category
+cntbSatisRank = aggregate(left~ rankSatis, data=tempdata, FUN=length) # number of employees for each value of TIC
+
+#plot it
+symbols(aggbSatisRank$rankSatis,aggbSatisRank$left,circles=cntbSatisRank$left, inches=.2, fg="white", bg="red",main= "Satisfaction and Employee Attrition", ylab="Average Attrition Rate", xlab= "Rank of Satisfaction")
+```
+
+Class 0-5 and 15-20 behaviour is logical - if very sadisfied they will stay, otherwise leave. What is intersting is group 5-10, showing suddent increase - we should address and understand why they are leaving.
+
+
+##Pair-wise approach
+
+A quick analysis of everything
+
+```{r}
+library(GGally)
+
+datatot$Newborn = factor(datatot$Newborn)
+datatot$left = factor(datatot$left)
+str(datatot)
+
+ggpairs(datatot,color = 'left', alpha = 0.4 )
+```
+
+
+#Quiz for week 2
+
+
+##Q1
+
+For the Credit Scoring dataset using the same specifications as the examples covered during the videos, which of the following claims is correct?
+all listed
+
+##Q3
+
+For the Credit Scoring dataset if you estimate a linear regression of the credit score (Rating) as a function of the variables Income, Cards and Married, what is the result of the estimation?
+*We consider an effect to be significant when the p-value is smaller than 0.05.*
+
+```{r}
+data=read.table('DATA_3.01_CREDIT.csv',sep=',',header=TRUE) 
+
+names(data)
+selectedData = data[,c("Rating","Income","Cards","Married")]
+str(selectedData)
+
+cor(selectedData[,1:3])
+
+
+#Estimate a linear regression model of Rating
+
+linreg=lm(Rating~.,data=selectedData)
+cor(linreg$fitted.values,selectedData$Rating) #acc of model
+plot(selectedData$Rating,linreg$fitted.values) 
+
+summary(linreg, digits = 4) 
+```
+
+##Q4
+
+For the HR dataset adapt the code of the R script to change the cutoff so that an employee with a probability of leaving larger than .5 will be seen as likely to leave. Which one of the following is the resulting output?
+
+Be aware that you may need to change the script, and not only the cutoff value, to find this answer.
+
+```{r}
+rm(list=ls(all=TRUE))
+datatot=read.table('DATA_3.02_HR2.csv', header = T,sep=',')
+
+str(datatot)
+#summary(datatot)
+
+logreg = glm(left ~ ., family=binomial(logit), data=datatot) # Estimate the drivers of attrition
+
+cor(logreg$fitted.values,datatot$left) # Assess the correlation between estimated attrition and actual
+
+cutoff=.5 # Cutoff to determine when P[leaving] should be considered as a leaver
+table(logreg$fitted.values<=cutoff,datatot$left)
+
+datasetSize <- length(logreg$fitted.values)
+#% of Employee to stay
+sum(logreg$fitted.values<=cutoff)/datasetSize*100
+#% of Employee to leave
+sum(logreg$fitted.values>cutoff)/datasetSize*100
+
+#check the accuracy of prediction - you can check either stayers or leavers, it will be the same answer
+mean((logreg$fitted.values>cutoff)==(datatot$left==1)) 
+```
+
+
+##Q5
+For the HR dataset using the same specifications as seen during the videos, which of the following claims is correct?
+
+```{r}
+summary(logreg) # Report the results of the logistic regression
+```
+
