@@ -1,22 +1,28 @@
 ---
 title: "Increase profits of the bike sharing scheme"
 #author: "LKB"
+classoption: landscape
+fontsize: 11pt
+#documentclass:
+#font-family: 'Courier'
 output: 
   pdf_document: 
     fig_caption: no
-    highlight: espresso
-  html_document: 
-    highlight: espresso
-    theme: readable
+    #highlight: espresso
+    #includes:
+    #  in_header: Preamble.tex
 ---
 
 ```{r, echo=FALSE}
 setwd("d:/tmp/Dropbox/Edu/Coursea/StrategicBusinessAnalytics/")
 library(knitr)
-opts_chunk$set(echo = FALSE, cache = FALSE, cache.path = "cache/", fig.path = "figure/", warning = FALSE,message = FALSE,verbose = FALSE)
+opts_chunk$set(echo = FALSE, cache = FALSE, cache.path = "cache/", fig.path = "figure/", warning = FALSE,message = FALSE,verbose = FALSE,fig.width=12, fig.height=4)
 #http://yihui.name/knitr/options/
 ```
-Bike sharing schemes are healthy alternative for the car, easing congestion, parking problem and providing much friendlier way to commute. 
+Bike sharing schemes are healthy alternative for the car, easing congestion, parking problem and providing much friendlier way to commute. [Exisitng data](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset) analysis suggest a good business oportunitiy with rapidly increasing number of users, though rentals are dependant on season and day of a week.
+
+
+
 ```{r}
 rm(list=ls(all=TRUE))
 data=read.table('day.csv',sep=',',header=TRUE)
@@ -29,7 +35,7 @@ data$yr<-data$yr + 2011
 #ummary(data)
 
 usersRatio = sum(data$registered)/sum(data$cnt)
-usersRatio = sprintf("%.2f %% of all users",usersRatio*100)
+usersRatio = sprintf("(%.2f %% of all users)",usersRatio*100)
 
 regUsers = aggregate(registered~ workingday, data=data, FUN=sum)
 regUsers[2] = regUsers[2]/ sum(data$registered)
@@ -39,16 +45,25 @@ casualUsers = aggregate(casual~ workingday, data=data, FUN=sum)
 casualUsers[2] = casualUsers[2]/ sum(data$casual)
 
 ```
-[Data](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset) analysis show increased interst in scheme, with registered users constituting `r usersRatio`. This group use bike mostly for work, `r regUsersRatio`.
+
 
 ```{r}
+oldPar<-par() #save std parameters
+par(mfrow=c(1,2)) #set plotting to 2 rows
+par(mgp=c(1.2,0.4,0), mar=c(2,3,1,1),mai = c(0.5,0.5,0.4,0.5), bty='n')
+
 plot(data$dteday,data$cnt,col='red', main = "Bike sharing scheme's rentals",ylab="Number of rentals",xlab = "Date")
 points(data$dteday,data$registered,col='blue')
-legend("topleft",c("Total rentals","Rentals by casual users"),pch=1,col=c('red','blue'))
+legend("topleft",c("Total rentals","Rentals by registered users"),pch=1,col=c('red','blue'))
+
+
+boxplot(registered~ weekday,data = data, main = "Registered rentals through the week",ylab="Number of rentals",xlab = "Day of week, starting from Sunday") #registerd prefer working days
 ```
 
-With a number of casual users visibly increasing during warmer months more targeted campaing is suggested to increase profibility in the biking schemes. To do so further exploration of data is recomended.
-```{r}
 
-```
+#Opportunity
+Registered users constituting largest user group `r usersRatio`, using bike mostly for work, `r regUsersRatio`. With a number of casual users visibly increasing during warmer months more targeted campaign is suggested to increase profit by:
 
+* converting casual users into registered users (group indentification)
+* understanding main actraction factors for casual user during holidays/weekends when fleet is underused (prediction + logistics)
+* designing a maintenance regime with bikes fixed during low usage (prediction + logistics)
