@@ -9,7 +9,7 @@ output:
   pdf_document: 
     fig_caption: no
     #highlight: espresso
-    #includes:
+   # includes:
     #  in_header: Preamble.tex
 ---
 
@@ -19,9 +19,6 @@ library(knitr)
 opts_chunk$set(echo = FALSE, cache = FALSE, cache.path = "cache/", fig.path = "figure/", warning = FALSE,message = FALSE,verbose = FALSE,fig.width=12, fig.height=4)
 #http://yihui.name/knitr/options/
 ```
-Bike sharing schemes are healthy alternative for the car, easing congestion, parking problem and providing much friendlier way to commute. [Exisitng data](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset) analysis suggest a good business oportunitiy with rapidly increasing number of users, though rentals are dependant on season and day of a week.
-
-
 
 ```{r}
 rm(list=ls(all=TRUE))
@@ -33,19 +30,23 @@ data$yr<-data$yr + 2011
 
 #str(data)
 #ummary(data)
+```
+
+
+```{r}
 
 usersRatio = sum(data$registered)/sum(data$cnt)
 usersRatio = sprintf("(%.2f %% of all users)",usersRatio*100)
 
 regUsers = aggregate(registered~ workingday, data=data, FUN=sum)
 regUsers[2] = regUsers[2]/ sum(data$registered)
-regUsersRatio = sprintf("with only %.2f %% active over weekend",regUsers[[2]][1]*100)
+regUsersRatio = sprintf(" (only %.2f %% use)",regUsers[[2]][1]*100)
 
 casualUsers = aggregate(casual~ workingday, data=data, FUN=sum)
 casualUsers[2] = casualUsers[2]/ sum(data$casual)
-
 ```
 
+Bike sharing schemes offer healthy alternative for the car for urban commuting and sightseeing. It ease congestion, pollution and parking problems. [Existing data](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset) analysis show rapidly increasing number of users, though rentals are date dependant. Registered users are the largest segment `r usersRatio`, doing predominantly work committing and not acive during weekends or holidays `r regUsersRatio` . This is partly compensated by casual users being most active during holidays and weekends, especially during warmer months.
 
 ```{r}
 oldPar<-par() #save std parameters
@@ -60,10 +61,10 @@ legend("topleft",c("Total rentals","Rentals by registered users"),pch=1,col=c('r
 boxplot(registered~ weekday,data = data, main = "Registered rentals through the week",ylab="Number of rentals",xlab = "Day of week, starting from Sunday") #registerd prefer working days
 ```
 
+To capitalise on the visible growth I suggest to address both existing and new users with a targeted marketing and promotion campaign, tied up with local event and attractions. We should also confirm durability of infrastructure and maintenance. I suggest: 
 
-#Opportunity
-Registered users constituting largest user group `r usersRatio`, using bike mostly for work, `r regUsersRatio`. With a number of casual users visibly increasing during warmer months more targeted campaign is suggested to increase profit by:
-
-* converting casual users into registered users (group indentification)
-* understanding main actraction factors for casual user during holidays/weekends when fleet is underused (prediction + logistics)
-* designing a maintenance regime with bikes fixed during low usage (prediction + logistics)
+* Identify main biking destinations for casual user during holidays/weekends when fleet is underused and tie bike rentals with sightseeing promotions and offers.
+* Verify if existing infrastructure is fit for purpose by assessing location of all pick-up stations by analysing patterns of its use and eliminate hot and cold spots;
+* Focus on converting local casual users to registered one by promotions;
+* Assess feasibility of smaller pick up points in suburbs to advert commuting for casual users;
+* Identify main factors for breakage and designing a maintenance regime aiming for shifting bike downtime to the low usage times
