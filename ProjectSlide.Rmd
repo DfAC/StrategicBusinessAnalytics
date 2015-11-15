@@ -49,9 +49,13 @@ casualUsers[2] = casualUsers[2]/ sum(data$casual)
 Bike sharing schemes offer healthy alternative for the car for urban commuting and sightseeing. It ease congestion, pollution and parking problems. [Existing data](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset) analysis show rapidly increasing number of users, though rentals are date dependant. Registered users are the largest segment `r usersRatio`, doing predominantly work committing and not acive during weekends or holidays `r regUsersRatio` . This is partly compensated by casual users being most active during holidays and weekends, especially during warmer months.
 
 ```{r}
+dev.off() #hack to get std parameters
 oldPar<-par() #save std parameters
 par(mfrow=c(1,2)) #set plotting to 2 rows
 par(mgp=c(1.2,0.4,0), mar=c(2,3,1,1),mai = c(0.5,0.5,0.4,0.5), bty='n')
+
+par(mar=c(5, 4, 4, 2))
+
 
 plot(data$dteday,data$cnt,col='red', main = "Bike sharing scheme's rentals",ylab="Number of rentals",xlab = "Date")
 points(data$dteday,data$registered,col='blue')
@@ -68,3 +72,10 @@ To capitalise on the visible growth I suggest to address both existing and new u
 * Focus on converting local casual users to registered one by promotions;
 * Assess feasibility of smaller pick up points in suburbs to advert commuting for casual users;
 * Identify main factors for breakage and designing a maintenance regime aiming for shifting bike downtime to the low usage times
+
+
+```{r}
+
+par(oldPar) #reset plotting parameters
+
+```

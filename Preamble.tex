@@ -1,0 +1,42 @@
+%My std preamble for the R knitr pdf's
+%\selectlanguage{british}%
+\usepackage[british]{babel}
+\usepackage{microtype} %better text
+\IfFileExists{lmodern.sty}{\usepackage{lmodern}}{} %type 1 vector font
+%
+\usepackage{lettrine}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%FOOTNOTES
+%nice look after http://www.dedoimedo.com
+\usepackage[bottom,hang,splitrule]{footmisc} %\usepackage[bottom]{footmisc}
+\setlength{\footnotemargin}{0.35cm} %space between number and footnote text
+\setlength{\footnotesep}{0.2cm} %{12pt} %space between footnotes
+\setlength{\skip\footins}{0.3cm} % space between the text body and the footnotes
+%\setlength{\footskip}{0pt} dont do it. It will overflow page no
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%TABLE SETTINGS
+\usepackage{colortbl} %colors in table
+\usepackage{rotating} %rotatins within tables
+\usepackage{multirow}
+\renewcommand{\arraystretch}{1.2} %add padding/spacing
+%\usepackage{adjustbox}%rotating and fitting into page
+%
+
+\usepackage{booktabs} % To thicken table lines
+%define thickness of table lines
+\let\mytoprule\toprule
+\renewcommand{\toprule}{\mytoprule[0.20em]}
+\let\mytoprule\bottomrule
+\renewcommand{\bottomrule}{\mytoprule[0.20em]}
+\let\mytoprule\midrule
+\renewcommand{\midrule}{\mytoprule[0.08em]}
+
+\usepackage{spreadtab} % for simple calculations
+
+%vertically and horizontally centered multicolumn cells with a fixed width. M{width}
+%\newcolumntype{M}[1]{>{\centering\hspace{0pt}}m{#1}}
+% each spanned cell has the same width. S{width of multicolumn cell}{number of spanned columns}
+%\newcolumntype{S}[2]{>{\centering\hspace{0pt}}m{(#1+(2\tabcolsep+\arrayrulewidth)*(1-#2))/#2}}
